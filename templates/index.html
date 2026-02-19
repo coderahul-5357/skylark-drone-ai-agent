@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Skylark Drone Operations AI</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f3f4f6;
+        }
+
+        .layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: #0f172a;
+            color: white;
+            padding: 20px;
+        }
+
+        .sidebar h2 {
+            margin-bottom: 25px;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #1e293b;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .sidebar button:hover {
+            background: #334155;
+        }
+
+        .content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        input, select {
+            padding: 8px;
+            margin: 6px 0;
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        button.primary {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button.primary:hover {
+            background: #1d4ed8;
+        }
+
+        pre {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        /* Floating Chat Button */
+        #chatButton {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2563eb;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        #chatPanel {
+            display: none;
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 350px;
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        #chatMessages {
+            height: 200px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+        <h2>Skylark AI</h2>
+
+        <button onclick="loadSection('overview')">Overview</button>
+        <button onclick="loadSection('roster')">Roster</button>
+        <button onclick="loadSection('assignment')">Assignment</button>
+        <button onclick="loadSection('inventory')">Inventory</button>
+        <button onclick="loadSection('conflicts')">Conflicts</button>
+        <button onclick="loadSection('urgent')">Urgent Reassign</button>
+    </div>
+
+    <div class="content" id="content">
+
+        <div class="card">
+            <h3>Global AI Command</h3>
+            <input id="globalInput"
+                   placeholder="Ask anything (e.g., check conflicts)">
+            <button class="primary" onclick="runGlobal()">Run</button>
+            <pre id="globalOutput"></pre>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Floating Chat -->
+<div id="chatButton" onclick="toggleChat()">💬</div>
+
+<div id="chatPanel">
+    <div style="font-weight:bold;margin-bottom:8px;">
+        AI Assistant
+    </div>
+    <div id="chatMessages"></div>
+    <input id="chatInput" placeholder="Type command">
+    <button class="primary" onclick="sendChat()">Send</button>
+</div>
+
+<script>
+
+function loadSection(section) {
+    const content = document.getElementById("content");
+
+    if (section === "overview") {
+        content.innerHTML = `
+            <div class="card">
+                <h3>System Overview</h3>
+                <ul>
+                    <li>FastAPI Backend</li>
+                    <li>Google Sheets 2-Way Sync</li>
+                    <li>Operational Conflict Engine</li>
+                    <li>Rule-Based Assignment AI</li>
+                </ul>
+            </div>
+        `;
+    }
+
+    if (section === "roster") {
+        content.innerHTML = `
+            <div class="card">
+                <h3>Query Pilot</h3>
+                <input id="skill" placeholder="Skill">
+                <input id="location" placeholder="Location">
+                <button class="primary" onclick="queryPilot()">Search</button>
+                <pre id="result"></pre>
+            </div>
+
+            <div class="card">
+                <h3>Update Pilot Status</h3>
+                <input id="pilotName" placeholder="Pilot Name">
+                <select id="newStatus">
+                    <option>Available</option>
+                    <option>On Leave</option>
+                    <option>Unavailable</option>
+                </select>
+                <button class="primary" onclick="updateStatus()">Update</button>
+            </div>
+        `;
+    }
+
+    if (section === "conflicts") {
+        content.innerHTML = `
+            <div class="card">
+                <h3>Conflict Detection</h3>
+                <button class="primary" onclick="runConflict()">Check Conflicts</button>
+                <pre id="result"></pre>
+            </div>
+        `;
+    }
+}
+
+function runGlobal() {
+    const msg = document.getElementById("globalInput").value;
+
+    fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: msg})
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("globalOutput").textContent =
+            JSON.stringify(data, null, 2);
+    });
+}
+
+function queryPilot() {
+    const skill = document.getElementById("skill").value;
+    const location = document.getElementById("location").value;
+
+    fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: `available pilot for ${skill} in ${location}`})
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("result").textContent =
+            JSON.stringify(data, null, 2);
+    });
+}
+
+function updateStatus() {
+    const name = document.getElementById("pilotName").value;
+    const status = document.getElementById("newStatus").value;
+
+    fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: `update status ${name} ${status}`})
+    })
+    .then(res => res.json())
+    .then(() => alert("Status Updated"));
+}
+
+function runConflict() {
+    fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: "check conflicts"})
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("result").textContent =
+            JSON.stringify(data, null, 2);
+    });
+}
+
+function toggleChat() {
+    const panel = document.getElementById("chatPanel");
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+
+function sendChat() {
+    const input = document.getElementById("chatInput");
+    const message = input.value;
+
+    if (!message) return;
+
+    const chatBox = document.getElementById("chatMessages");
+
+    const userMsg = document.createElement("div");
+    userMsg.innerText = "You: " + message;
+    chatBox.appendChild(userMsg);
+
+    fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: message})
+    })
+    .then(res => res.json())
+    .then(data => {
+        const botMsg = document.createElement("div");
+        botMsg.innerText = "AI: " + JSON.stringify(data);
+        chatBox.appendChild(botMsg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    input.value = "";
+}
+
+</script>
+
+</body>
+</html>
